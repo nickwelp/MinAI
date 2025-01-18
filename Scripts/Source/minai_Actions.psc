@@ -21,8 +21,8 @@ function Maintenance(minai_MainQuestController _main)
     MinaiUtil.Info("MinAI Actions are loading")
     player = Game.GetPlayer()
     playerName = main.GetActorName(player)
+    
     ; cowering
-
     aiff.RegisterAction("ExtCmdCower", "Cower", "Cower before " + playerName + " due to " + playerName + "'s threats", "General", 1, 30, 2, 5, 300, True)
     aiff.RegisterAction("ExtCmdCeaseCower", "CeaseCeaseCower", "Cease cowering before " + playerName + "." , "General", 1, 0, 2, 5, 60, True)
 
@@ -33,14 +33,18 @@ Event CommandDispatcher(String speakerName,String  command, String parameter)
         return
     EndIf
     Main.Debug("Actions - CommandDispatcher(" + speakerName +", " + command +", " + parameter + ")")
-    if (command == "ExtCmdStartLooting")
-        StartLooting()
-        Main.RegisterEvent(speakerName + " started looting the area")
-    elseif (command == "ExtCmdStopLooting")
-        StartLooting()
-        Main.RegisterEvent(speakerName + " stopped looting the area")
+    ; for cowering
+    if (command == "ExtCmdCower")
+        Cower(speakerName)
+        Main.RegisterEvent(speakerName + " is cowering before " + playerName)
+    elseif (command == "ExtCmdCeaseCower")
+        CeaseCower(speakerName)
+        Main.RegisterEvent(speakerName + " has stopped cowering before " + playerName)
     EndIf
 EndEvent
 
+function Cower()
+    Actor akActor = AIAgentFunctions.getAgentByName(speakerName)
+    akActor.SetIsInti
 
 

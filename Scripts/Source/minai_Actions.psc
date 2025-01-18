@@ -27,13 +27,21 @@ function Maintenance(minai_MainQuestController _main)
     
     ; cowering
     aiff.RegisterAction("ExtCmdCower", "Cower", "Cower before " + playerName + " due to " + playerName + "'s threats", "General", 1, 30, 2, 5, 300, True)
+    ; those those who have already been cowered
+    aiff.RegisterAction("ExtCmdGrovel", "Grovel", "Grovel before " + playerName + " due to " + playerName + "'s threats", "General", 1, 30, 2, 5, 300, True)
+    ; for those finding their bravery
     aiff.RegisterAction("ExtCmdCeaseCower", "CeaseCower", "Cease cowering before " + playerName + "." , "General", 1, 30, 2, 5, 300, True)
-
-    ; strip 
-    ; have something to cower people into right
+    ; strip - have something to cower people into right
     aiff.RegisterAction("ExtCmdDisrobe", "Disrobe", "Take off all your clothes", "General", 1, 30, 2, 5, 300, True)
-    aiff.RegisterAction("ExtCmdGetDressed", "GetDressed", "Put clothes on" , "General",  1, 30, 2, 5, 300, True)
+    ; get dressed again
+    aiff.RegisterAction("ExtCmdGetDressed", "GetDressed", "Put your clothes on" , "General",  1, 30, 2, 5, 300, True)
+    ; look pitiful for when the player is done with them
+    aiff.RegisterAction("ExtCmdLookPitiful", "LookPitiful", "Look pitiful to assuage the player" , "General",  1, 30, 2, 5, 300, True)
+    
 
+
+    ; aiff.RegisterAction("ExtCmdHug", "Hug", "Hug the target", "General", 1, 120, 2, 5, 300, bHasSLapp)
+    ; string actionName, string mcmName, string mcmDesc, string mcmPage, int enabled, float interval, float exponent, int maxInterval, float decayWindow, bool hasMod, bool forceUpdate=false)
     ; Event OnRegisterAction(string actionName, string actionPrompt, string mcmDescription, string targetDescription, string targetEnum, int enabled, float cooldown, int ttl)
     ;     Info("OnRegisterAction(" + actionName + " => " + enabled + " (Cooldown: " + cooldown + ")): " + actionPrompt)
     ;     if bHasCHIM

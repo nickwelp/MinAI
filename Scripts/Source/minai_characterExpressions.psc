@@ -191,7 +191,7 @@ int function getIndex(actor akActor)
 endFunction
 
 int function getIndexOrCreate(actor akActor)
-    int index = getIndex()
+    int index = getIndex(akActor)
     if(index<0)
         AddEmotingActor(akActor)
         return emotingActors.Length - 1

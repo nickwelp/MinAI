@@ -138,9 +138,10 @@ function AddEmotingActor(actor akActor)
 endfunction
 
 function removeEmotingActor(actor akActor)
+    ; just clear it if someone is asking us too, for any reason
+    akActor.ClearExpressionOverride()
     int index = emotingActors.find(akActor)
     if(index>=0)
-        akActor.ClearExpressionOverride()
         int newLength = emotingActors.Length - 1
         Actor[] newActorList = new Actor[newLength]
         int[] iNewNeutralStrengthList = new int[newLength]
@@ -480,76 +481,85 @@ endFunction
 Event OnUpdateGameTime() 
     int i = 0
     while i < ActorList.Length
-        iNeutralStrength[i] = ((1-decay) * iNeutralStrength[i]) as int
-        iAngerStrength[i] = ((1-decay) * iAngerStrength[i]) as int
-        iFearStrength[i] = ((1-decay) * iFearStrength[i]) as int
-        iHappyStrength[i] = ((1-decay) * iHappyStrength[i]) as int
-        iSadStrength[i] = ((1-decay) * iSadStrength[i]) as int
-        iSurpriseStrength[i] = ((1-decay) * iSurpriseStrength[i]) as int
-        iPuzzledStrength[i] = ((1-decay) * iPuzzledStrength[i]) as int
-        iDisgustedStrength[i] = ((1-decay) * iDisgustedStrength[i]) as int
+        bool NeutralChanged = iNeutralStrengthList[i] > 0
+        bool AngerChanged = iAngerStrengthList[i] > 0
+        bool FearChanged = iFearStrengthList[i] > 0
+        bool HappyChanged = iHappyStrengthList[i] > 0
+        bool SadChanged = iSadStrengthList[i] > 0
+        bool SurpriseChanged = iSurpriseStrengthList[i] > 0
+        bool neutralChanged = iNeutralStrengthList[i] > 0
+        bool neutralChanged = iNeutralStrengthList[i] > 0
+
+        iNeutralStrengthList[i] = ((1-decay) * iNeutralStrengthList[i]) as int
+        iAngerStrengthList[i] = ((1-decay) * iAngerStrengthList[i]) as int
+        iFearStrengthList[i] = ((1-decay) * iFearStrengthList[i]) as int
+        iHappyStrengthList[i] = ((1-decay) * iHappyStrengthList[i]) as int
+        iSadStrengthList[i] = ((1-decay) * iSadStrengthList[i]) as int
+        iSurpriseStrengthList[i] = ((1-decay) * iSurpriseStrengthList[i]) as int
+        iPuzzledStrengthList[i] = ((1-decay) * iPuzzledStrengthList[i]) as int
+        iDisgustedStrengthList[i] = ((1-decay) * iDisgustedStrengthList[i]) as int
         ; avoid long tail smidgens of a fraction of emotion
-        if(iNeutralStrength[i]<5)
-            iNeutralStrength[i] = 0
+        if(iNeutralStrengthList[i]<5)
+            iNeutralStrengthList[i] = 0
         endIf
-        if(iAngerStrength[i]<5)
-            iAngerStrength[i] = 0
+        if(iAngerStrengthList[i]<5)
+            iAngerStrengthList[i] = 0
         endIf
-        if(iFearStrength[i]<5)
-            iFearStrength[i] = 0
+        if(iFearStrengthList[i]<5)
+            iFearStrengthList[i] = 0
         endIf
-        if(iHappyStrength[i]<5)
-            iHappyStrength[i] = 0
+        if(iHappyStrengthList[i]<5)
+            iHappyStrengthList[i] = 0
         endIf
-        if(iSadStrength[i]<5)
-            iSadStrength[i] = 0
+        if(iSadStrengthList[i]<5)
+            iSadStrengthList[i] = 0
         endIf
-        if(iSurpriseStrength[i]<5)
-            iSurpriseStrength[i] = 0
+        if(iSurpriseStrengthList[i]<5)
+            iSurpriseStrengthList[i] = 0
         endIf
-        if(iPuzzledStrength[i]<5)
-            iPuzzledStrength[i] = 0
+        if(iPuzzledStrengthList[i]<5)
+            iPuzzledStrengthList[i] = 0
         endIf
-        if(iDisgustedStrength[i]<5)
-            iDisgustedStrength[i] = 0
+        if(iDisgustedStrengthList[i]<5)
+            iDisgustedStrengthList[i] = 0
         endIf
 
         ; these emotions should only go to 100
         ; we need to normalize this if the emotions go over 100
-        int iTotalStrength = getTotalStrength[i](akActor)
+        int iTotalStrength = getTotalStrength(akActor)
         if(iTotalStrength > 100)
-            iNeutralStrength[i] = iNeutralStrength[i] * 100 / iTotalStrength 
-            iAngerStrength[i] = iAngerStrength[i] * 100 / iTotalStrength
-            iFearStrength[i] = iFearStrength[i] * 100 / iTotalStrength
-            iHappyStrength[i] = iHappyStrength[i] * 100 / iTotalStrength
-            iSadStrength[i] = iSadStrength[i] * 100 / iTotalStrength
-            iSurpriseStrength[i] = iSurpriseStrength[i] * 100 / iTotalStrength
-            iPuzzledStrength[i] = iPuzzledStrength[i] * 100 / iTotalStrength
-            iDisgustedStrength[i] = iDisgustedStrength[i] * 100 / iTotalStrength
+            iNeutralStrengthList[i] = iNeutralStrengthList[i] * 100 / iTotalStrength 
+            iAngerStrengthList[i] = iAngerStrengthList[i] * 100 / iTotalStrength
+            iFearStrengthList[i] = iFearStrengthList[i] * 100 / iTotalStrength
+            iHappyStrengthList[i] = iHappyStrengthList[i] * 100 / iTotalStrength
+            iSadStrengthList[i] = iSadStrengthList[i] * 100 / iTotalStrength
+            iSurpriseStrengthList[i] = iSurpriseStrengthList[i] * 100 / iTotalStrength
+            iPuzzledStrengthList[i] = iPuzzledStrengthList[i] * 100 / iTotalStrength
+            iDisgustedStrengthList[i] = iDisgustedStrengthList[i] * 100 / iTotalStrength
         endif
-        if(iNeutralStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodNeutralId, iNeutralStrength[i] * fStrength[i]Mitigator)
+        if(iNeutralStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodNeutralId, iNeutralStrengthList[i] * fStrengthMitigator)
         endif
-        if(iAngerStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodAngerId, iAngerStrength[i] * fStrength[i]Mitigator) 
+        if(iAngerStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodAngerId, iAngerStrengthList[i] * fStrengthMitigator) 
         endif
-        if(iFearStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodFearId, iFearStrength[i] * fStrength[i]Mitigator) 
+        if(iFearStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodFearId, iFearStrengthList[i] * fStrengthMitigator) 
         endif
-        if(iHappyStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodHappyId, iHappyStrength[i] * fStrength[i]Mitigator) 
+        if(iHappyStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodHappyId, iHappyStrengthList[i] * fStrengthMitigator) 
         endif
-        if(iSadStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodSadId, iSadStrength[i] * fStrength[i]Mitigator) 
+        if(iSadStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodSadId, iSadStrengthList[i] * fStrengthMitigator) 
         endif
-        if(iSurpriseStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodSurpriseId, iSurpriseStrength[i] * fStrength[i]Mitigator) 
+        if(iSurpriseStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodSurpriseId, iSurpriseStrengthList[i] * fStrengthMitigator) 
         endif
-        if(iPuzzledStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodPuzzledId, iPuzzledStrength[i] * fStrength[i]Mitigator) 
+        if(iPuzzledStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodPuzzledId, iPuzzledStrengthList[i] * fStrengthMitigator) 
         endif
-        if(iDisgustedStrength[i]!=0)
-            akActor.SetExpressionOverride(iMoodDisgustedId, iDisgustedStrength[i] * fStrengthMitigator) 
+        if(iDisgustedStrengthList[i]!=0)
+            akActor.SetExpressionOverride(iMoodDisgustedId, iDisgustedStrengthList[i] * fStrengthMitigator) 
         endif
         i += 1
     endWhile
@@ -564,14 +574,18 @@ endEvent
 
 
 ; zero out all emotions and kill any animation claims
-function end()
-    iNeutralStrength = 0
-    iAngerStrength = 0
-    iFearStrength = 0
-    iHappyStrength = 0
-    iSadStrength = 0
-    iSurpriseStrength = 0
-    iPuzzledStrength = 0
-    iDisgustedStrength = 0
-    checkIfTimerDone()
+function endForActor(actor akActor)
+    int index = ActorList.Find(akActor)
+    if(index>-1)    
+        iNeutralStrength[i] = 0
+        iAngerStrength[i] = 0
+        iFearStrength[i] = 0
+        iHappyStrength[i] = 0
+        iSadStrength[i] = 0
+        iSurpriseStrength[i] = 0
+        iPuzzledStrength[i] = 0
+        iDisgustedStrength[i] = 0
+        removeEmotingActor(akActor)
+        checkIfTimerDone()
+    endIf
 endFunction

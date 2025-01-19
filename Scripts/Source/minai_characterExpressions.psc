@@ -1,8 +1,5 @@
 scriptname minai_characterExpressionAnimationClass extends Quest
 
-; this is a class that every actor experiencing 
-; emotions will have attached to themselves
-
 ; https://ck.uesp.net/wiki/SetExpressionOverride_-_Actor
 ; 0: Dialogue Anger
 ; 1: Dialogue Fear
@@ -196,7 +193,8 @@ int function getIndexOrCreate(actor akActor)
         AddEmotingActor(akActor)
         return emotingActors.Length - 1
     endif
-    return index    
+    return index 
+endfunction   
 
 function constructor()
     ; decay must be less than 1, but lets just eat it if its not

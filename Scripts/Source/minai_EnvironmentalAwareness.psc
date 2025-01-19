@@ -144,7 +144,11 @@ function SetContext(actor akActor)
       envDescription += "It is raining outside. "
     endif
     ; Snow is 3, Rain is 2, Cloudy is 1, Clear is 0, and -1 is used 
- 
+    
+    if(akActor.IsInInterior())
+      envDescription = "We are indoors. "
+    endif
+
     if(bHasFrostfall)
       Weather akWeather = Weather.GetCurrentWeather()
       bool IsWeatherOvercast = _Frost_OvercastWeatherList.HasForm(akWeather)
@@ -375,6 +379,52 @@ function SetContext(actor akActor)
       staticData += ", and their attire is " + warmthLanguage + ". "
     endif
     string privateKnowledge = ""
+
+    int iActorAggression = akActor.GetActorValue("Aggression")
+    int iActorConfidence = akActor.GetActorValue("Confidence")
+    int iActorAssistance = akActor.GetActorValue("Assistance")
+    int iActorMorality = akActor.GetActorValue("Morality")
+
+    if(iActorAggression == 0 )
+      privateKnowledge += an + " is completely unaggressive and will do anything to avoid violence. "
+    elseif(iActorAggression == 1)
+      privateKnowledge += an + " will attack their enemies. "
+    elseif(iActorAggression == 2)
+      privateKnowledge += an + " will attack anyone who is not a friend. "
+    elseif(iActorAggression == 3)
+      privateKnowledge += an + " is in a frenzy! "
+    endif 
+
+    if (iActorConfidence == 0)
+      privateKnowledge += an + " will always flee or avoid threats. " + an + " NEVER engages in combat under any circumstances. "
+    elseif (iActorConfidence == 1)
+      privateKnowledge += an + " will flee or avoid threats until the " + an + " is much stronger than that threat. "
+    elseif (iActorConfidence == 2)
+      privateKnowledge += an + " will flee or avoid threats if outmatched. "
+    elseif (iActorConfidence == 3)
+      privateKnowledge += an + " will flee or avoid threats if severely outmatched. "
+    elseif (iActorConfidence == 4)
+      privateKnowledge += an " is fatalistic and will never flee or avoid threats. "
+    endif
+
+    if (iActorAssistance == 0)
+      privateKnowledge += an + " will not help anyone. "
+    elseif (iActorAssistance == 1)
+      privateKnowledge += an + " will only help allies. "
+    elseif (iActorAssistance == 2)
+      privateKnowledge += an + " will help friends and allies. "
+    endif
+
+    if (iActorMorality == 0)
+      privateKnowledge += an + " is willing to commit any crime. "
+    elseif (iActorMorality == 1)
+      privateKnowledge += an + " will commit property crimes ie theft, and trespassing, and violent crimes when pressured to attack someone who is an enemy. "
+    elseif (iActorMorality == 2)
+      privateKnowledge += an + " will commit property crimes ie theft and trespassing but will never commit violent crimes. "
+    elseif (iActorMorality == 3)
+      privateKnowledge += an + " will not commit any crime. "
+    endif
+
     string playerName = main.GetActorName(playerRef)
     if(akActor!=playerRef)
       if(bIsBribed)

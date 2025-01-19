@@ -17,6 +17,17 @@ string playerName
 bool bHasDefeat
 bool bHasSimpleSlavery
 
+; actions have consequences... and the game doesn't save changes to NPC's AI Attributes between saves
+; so we need to record new values and update them accordingly
+
+actor[] ActorList
+int[] MoralityList
+int[] AggressionList
+int[] ConfidenceList
+int[] AssistanceList
+bool[] updatedSinceLastSaveLoad
+
+
 ; class for managing npc emotional expressions
 minai_characterExpressions emotionalFacialExpressions
 
@@ -25,6 +36,48 @@ Bool Function HaveSimpleSlavery()
     Int ssIndex = 
     Return 255 != ssIndex
 EndFunction
+
+function addActor(actor akActor)
+    actor[] newlist = new actor[ActorList.Length + 1]
+    int[] newMoralityList = new int[ActorList.Length + 1]
+    int[] newAggressionList = new int[ActorList.Length + 1]
+    int[] newConfidenceList = new int[ActorList.Length + 1]
+    int[] newAssistanceList = new int[ActorList.Length + 1]
+    int[] newUpdatedSinceLastSaveLoad = new int[ActorList.Length + 1]
+    
+    int i = 0
+    while i < ActorList.Length 
+        newList[i] = ActorList[i]
+        newMoralityList[i] = MoralityList[i]
+        newAggressionList[i] = AggressionList[i]
+        newConfidenceList[i] = ConfidenceList[i]
+        newAssistanceList[i] = AssistanceList[i]
+        newUpdatedSinceLastSaveLoad[i] = updatedSinceLastSaveLoad[i]        
+        i += 1
+    endWhile
+    newList[newList.Length - 1] = akActor
+    newMoralityList[newList.Length - 1] = akActor.GetActorValue("Morality")
+    newAggressionList[newList.Length - 1] = akActor.GetActorValue("Aggression")
+    newConfidenceList[newList.Length - 1] = akActor.GetActorValue("Confidence")
+    newAssistanceList[newList.Length - 1] = akActor.GetActorValue("Assistance")
+    updatedSinceLastSaveLoad[newList.Length - 1] = true
+    ActorList = newList
+    MoralityList = newMoralityList
+    AggressionList = newAggressionList
+    ConfidenceList = newConfidenceList
+    AssistanceList = newAssistanceList       
+endFunction
+
+int[] function extendIntArray(int val, int[] intArray)
+    int[] newArray = new int[intArray.Length + 1]
+    int i = 0
+    while i < intArray.Length
+        newArray[i] = intArray[i]
+        i += 1
+    endWhile
+    newArray[newArray.Length - 1] = val
+    return newArray
+endFunction
 
 
 function Maintenance(minai_MainQuestController _main)
@@ -59,6 +112,7 @@ function Maintenance(minai_MainQuestController _main)
 EndFunction
 
 function SetContext(actor akActor)
+    examineActor(akActor)
     string actorName = main.GetActorName(akActor)
     bool bIsIntimidated = akActor.IsIntimidatedbyPlayer()
     bool bWouldBeIntimidated = akActor.GetIntimidateSuccess()
@@ -66,41 +120,94 @@ function SetContext(actor akActor)
     bool isPlayerHumbled = false playerRef.   
 
     bool isDefeated = false
-    ; what action would this character take next?
    
     if bHasDefeat 
         isDefeated = Defeat.IsDefeatActive(akTarget)
         isPlayerHumbled = Defeat.IsDefeatActive(playerRef)
     endif
-
-    if isPlayerHumbled
-        if bIsIntimidated
-            aiff.RegisterAction("ExtCmdCeaseCower", "CeaseCower", "Cease cowering before " + playerName + "." , actorName, 1, 30, 2, 5, 300, True)
-        endif
-    endif
-
-    if(bIsIntimidated)
-        aiff.RegisterAction("ExtCmdGrovel", "Grovel", "Grovel before " + playerName + " due to " + playerName + "'s threats", actorName, 1, 30, 2, 5, 300, True)
-        ; aiff.RegisterAction("ExtCmdCeaseCower", "CeaseCower", "Cease cowering before " + playerName + "." , actorName, 1, 30, 2, 5, 300, True)
+    ; what action would this character take next?
+    if(bIsIntimidated && !isPlayerHumbled)
+        aiff.RegisterAction("ExtCmdGrovel", "Grovel", "Grovel before " + playerName, actorName, 1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdAllowArrest", "AllowRestraints",  "Allow self to be restrained", actorName, 1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdDisrobe", "Disrobe", "Take off all your clothes", actorName, 1, 30, 2, 5, 300, True)
-        aiff.RegisterAction("ExtCmdLookPitiful", "BeMeek", "Look meek and pitiful to assuage the player" , actorName,  1, 30, 2, 5, 300, True)
+        aiff.RegisterAction("ExtCmdLookPitiful", "BeMeek", "Look meek and pitiful, start begging to assuage the player" , actorName,  1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdGetDressed", "GetDressed", "Put your clothes on" , actorName,  1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdFreezeInTerror", "FreezeInTerror", "Freeze in terror", actorName,  1, 30, 2, 5, 300, True)
     endIf
+
     if(bWouldBeIntimidated && !bIsIntimidated)
         aiff.RegisterAction("ExtCmdCower", "Cower",  "Cower before " + playerName + " due to threats", actorName, 1, 30, 2, 5, 300, True)
+        aiff.RegisterAction("ExtCmdFreezeInTerror", "FreezeInTerror", "Freeze in terror", actorName,  1, 30, 2, 5, 300, True)
     endif
     if(isPlayerHumbled && bIsIntimidated)
         aiff.RegisterAction("ExtCmdCeaseCower", "CeaseCower", "Cease cowering before " + playerName + "." , actorName, 1, 30, 2, 5, 300, True)
     endif
 
+    ; disrobe cause horny
     ; is a percent score, 1-100
     int arousalScore = arousal.GetActorArousal(akActor)
     if(arousalScore >= 70)
-        aiff.RegisterAction("ExtCmdDisrobe", "Disrobe", "Take off all your clothes", actorName, 1, 30, 2, 5, 300, True)
+        ; undress doesn't throw clothes on floor
+        aiff.RegisterAction("ExtCmdDisrobe", "Undress", "Take off all your clothes", actorName, 1, 30, 2, 5, 300, True)
     endif
+endfunction
 
+
+
+
+; lower morality
+; by game mechanics this only impacts followers 
+; but by describing this to the LLMs it can be made informative
+function degenerate(actor akActor)
+    int index = ActorList.find(akActor)
+    if(index>-1)
+        MoralityList[index] = MoralityList[index] - 1
+        if(MoralityList[index]<0) 
+            MoralityList[index] = 0
+        Endif
+        akActor.SetActorValue("Morality") = MoralityList[index]
+    else 
+        addActor(akActor)
+        MoralityList[MoralityList.Length - 1] = MoralityList[MoralityList.Length] - 1
+        if(MoralityList[MoralityList.Length - 1]<0) 
+            MoralityList[MoralityList.Length - 1] = 0
+        Endif
+        akActor.SetActorValue("Morality") = MoralityList[MoralityList.Length - 1]
+    endif
+endFunction
+
+
+
+; for handling the fact that changes to AI values don't persist across saves,we'll 
+; reimprint the actors when they come back on the scene via AIFF setcontext
+function examineActor(actor akActor)
+    int index = ActorList.find(akActor)
+    if(index<0)
+        ; nothing worth doing
+    else 
+        if(!updatedSinceLastSaveLoad[index])
+            akActor.SetActorValue("Morality") = MoralityList[index]
+            akActor.SetActorValue("Aggression") = AggressionList[index]
+            akActor.SetActorValue("Confidence") = ConfidenceList[index]
+            akActor.SetActorValue("Assistance") = AssistanceList[index]
+            updatedSinceLastSaveLoad[index] = true
+        endif
+    endif
+endfunction
+
+
+; flag NPCs as having been umimprinted with their updated AI attributes
+; after loading from save
+Event OnPlayerLoadGame()
+    int i = 0
+    while i < updatedSinceLastSaveLoad.Length
+        updatedSinceLastSaveLoad[i] = false
+        i += 1
+    endwhile
+endEvent
+
+
+    ; Changes to the below actor values, if modified with SetActorValue - Actor for instance, will not persist in consecutive saves. 
     ; SendAssaultAlarm()
 
     ; SendModEvent("PlayerRefEnslaved")
@@ -137,137 +244,14 @@ function SetContext(actor akActor)
 
 ; Prisoner.SetRestrained()
 
-; Aggression
-; Related to faction relations , will determine when the actor will initiate combat.
-; Type 	Value 	Description
-; Unaggressive 	0 	Will not initiate combat.
-; Aggressive 	1 	Will attack enemies on sight.
-; Very Aggressive 	2 	Will attack enemies and neutrals on sight.
-; Frenzied 	3 	Will attack anyone on sight. Actors are rarely set as mad by default, it is rather the result of a spell or a script (example, the “Madness” spell).
+
+; ; Set the prisoner's outfit to rags
+; Prisoner.SetOutfit(RagsOutfit)
 
 
-; Confidence
+; ; Set the prisoner's sleep outfit to rags too
+; Prisoner.SetOutfit(RagsOutfit, true)
 
-; Will determine when the actor will avoid or flee from threats.
-; Type 	Value 	Description
-; Cowardly 	0 	Will always flee/avoid threats. Cowardly actors NEVER engage in combat under any circumstances. Confidence cannot be lower than 0.
-; Cautious 	1 	Will flee/avoid threats until the actor is stronger than that threat.
-; Average 	2 	Will flee/avoid threats if outmatched.
-; Brave 	3 	Will flee/avoid threats if severely outmatched.
-; Foolhardy 	4 	Will never flee/avoid threats.
-; Assistance
-
-; Determines when the actor will assist his friends and allies (see Factions ).
-; Type 	Value 	Description
-; Helps Nobody 	0 	Won't help anyone.
-; Helps Allies 	1 	Will only help allies.
-; Helps Friends and Allies 	2 	Will help friends and allies.
-
-
-; Mood
-
-; Not used.
-
-
-; Energy
-
-; A value from 0 to 100. Energy determines how many times the actor will move to a new location when subject to a Sandbox package .
-
-
-; Morality
-
-; If this actor is the player's companion (Follower), and the latter orders him to commit a crime, morality will determine whether the actor will ultimately commit it.
-; Type 	Value 	Description
-; Any Crime 	0 	The actor will commit any crime.
-; Violence Against Enemies 	1 	The actor will commit "property" crimes (theft, trespassing), and violent crimes when ordered to attack an enemy (only). Rarely used.
-; Property Crime Only 	2 	The actor will commit “property” crimes (theft, trespassing), but will never commit violent crimes. Rarely used.
-; No Crime 	3 	The actor will refuse to commit any crime.
-
-
-
-
-; List of Actor Values
-
-; The current list of Actor Values is:
-
-;     Attributes
-;         Health
-;         Magicka
-;         Stamina
-;     Skills
-;         OneHanded
-;         TwoHanded
-;         Marksman (Archery)
-;         Block
-;         Smithing
-;         HeavyArmor
-;         LightArmor
-;         Pickpocket
-;         Lockpicking
-;         Sneak
-;         Alchemy
-;         Speechcraft (Speech)
-;         Alteration
-;         Conjuration
-;         Destruction
-;         Illusion
-;         Restoration
-;         Enchanting
-;         <skillname>Mod
-;             SkillMod values are changed by perks and fortify skill enchantments. The automatic perk PerkSkillBoosts translates those into actual game effects.
-;         <skillname>PowerMod
-;             SkillPowerMod values are changed by fortify skill potions. The automatic perk AlchemySkillBoosts translates those into actual game effects. The effect is usually the same as increasing the skill level of the associated skill, except for the magic schools: Alteration = duration, Conjuration = duration, Destruction = magnitude, Illusion = magnitude, Restoration = magnitude.
-
-
-;     AI Data
-;         Aggression
-;         Confidence
-;         Energy
-;         Morality
-;         Mood
-;         Assistance
-;         WaitingForPlayer
-
-
-;     Other Statistics
-;         HealRate
-;         MagickaRate
-;         StaminaRate
-;         attackDamageMult (try 5 for good ex.)
-;         SpeedMult
-;         ShoutRecoveryMult (Handles the shout cooldowns)
-;         WeaponSpeedMult (values of 1 to 5 work well, 0 to reset)
-;         InventoryWeight
-;         CarryWeight
-;         CritChance
-;         MeleeDamage
-;         UnarmedDamage
-;         Mass
-;         VoicePoints
-;         VoiceRate
-;         DamageResist
-;         DiseaseResist
-;         PoisonResist
-;         FireResist
-;         ElectricResist
-;         FrostResist
-;         MagicResist
-;         Paralysis
-;         Invisibility
-;         NightEye
-;         DetectLifeRange
-;         WaterBreathing
-;         WaterWalking
-;         JumpingBonus
-;         AbsorbChance
-;         WardPower
-;         WardDeflection
-;         EquippedItemCharge
-;         EquippedStaffCharge
-;         ArmorPerks
-;         ShieldPerks
-;         BowSpeedBonus
-;         DragonSouls
 
 
 Event CommandDispatcher(String speakerName,String  command, String parameter)
@@ -275,9 +259,6 @@ Event CommandDispatcher(String speakerName,String  command, String parameter)
         return
     EndIf
     Main.Debug("Actions - CommandDispatcher(" + speakerName +", " + command +", " + parameter + ")")
-    ; i hope to figure out more actions we can gain from the game engine and add them here
-    ; things like doFavor need more research
-    
     ; for cowering
     if (command == "ExtCmdCower")
         Cower(speakerName)
@@ -287,15 +268,16 @@ Event CommandDispatcher(String speakerName,String  command, String parameter)
         Main.RegisterEvent(speakerName + " has stopped cowering before " + playerName)
     elseif (command == "ExtCmdGrovel")
         Main.RegisterEvent(speakerName + " begins groveling before " + playerName)
-    elseif (command == "ExtCmdDisrobe")    
+    elseif (command == "ExtCmdDisrobe")
+        Disrobe(speakerName)    
         Main.RegisterEvent(speakerName + " begins to disrobe.")
     elseif (command == "ExtCmdGetDressed") 
         Main.RegisterAction(speakerName + " begins to get dressed.")
     elseif (command == "ExtCmdLookPitiful")
         Main.RegisterAction(speakerName + " looks absolutely pitiful.")
+    elseif (command == "ExtCmdFreezeInTerror")
+        Main.RegisterAction(speakerName + " freezes in terror.")
     EndIf
-
-
 EndEvent
 
 function Cower(string speakerName)
@@ -311,3 +293,61 @@ function CeaseCower(string speakerName)
     emotionalFacialExpressions.feelAnger(akActor)
     emotionalFacialExpressions.feelDisgusted(akActor)
 endfunction
+
+function Disrobe(string speakerName)
+    ; they only get as naked as your mods allow, ergo sfw
+    Actor akActor = AIAgentFunctions.getAgentByName(speakerName)
+    Armor helmetArmor = akActor.GetEquippedArmorInSlot(30)
+    Armor torsoArmor = akActor.GetEquippedArmorInSlot(32)
+    Armor shoesArmor = akActor.GetEquippedArmorInSlot(37)
+    Armor shieldArmor = akActor.GetEquippedArmorInSlot(39)
+    Armor handsArmor = akActor.GetEquippedArmorInSlot(33)
+    Armor forearmsArmor = akActor.GetEquippedArmorInSlot(34)
+    Armor ringArmor = akActor.GetEquippedArmorInSlot(36)
+    Armor calvesArmor = akActor.GetEquippedArmorInSlot(38)  
+    Armor earsArmor = akActor.GetEquippedArmorInSlot(43)
+    Armor circletArmor = akActor.GetEquippedArmorInSlot(42)
+    akActor.UnequipAll()
+
+    ; gear goes to floor in front of player
+    if(helmetArmor)
+        akActor.RemoveItem(helmetArmor,1)
+        playerRef.PlaceAtMe(helmetArmor)
+    endif
+    if(torsoArmor)
+        akActor.RemoveItem(torsoArmor,1)
+        playerRef.PlaceAtMe(torsoArmor)
+    endif
+    if(shoesArmor)
+        akActor.RemoveItem(shoesArmor,1)
+        playerRef.PlaceAtMe(shoesArmor)
+    endif
+    if(shieldArmor)
+        akActor.RemoveItem(shieldArmor,1)
+        playerRef.PlaceAtMe(shieldArmor)
+    endif
+    if(handsArmor)
+        akActor.RemoveItem(handsArmor,1)
+        playerRef.PlaceAtMe(handsArmor)
+    endif
+    if(forearmsArmor)
+        akActor.RemoveItem(forearmsArmor,1)
+        playerRef.PlaceAtMe(forearmsArmor)
+    endif
+    if(ringArmor)
+        akActor.RemoveItem(ringArmor,1)
+        playerRef.PlaceAtMe(ringArmor)
+    endif
+    if(calvesArmor)
+        akActor.RemoveItem(calvesArmor,1)
+        playerRef.PlaceAtMe(calvesArmor)
+    endif
+    if(earsArmor)
+        akActor.RemoveItem(earsArmor,1)
+        playerRef.PlaceAtMe(earsArmor)
+    endif
+    if(circletArmor)
+        akActor.RemoveItem(circletArmor,1)
+        playerRef.PlaceAtMe(circletArmor)
+    endif
+endFunction

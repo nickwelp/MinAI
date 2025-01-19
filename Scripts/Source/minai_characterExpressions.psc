@@ -49,9 +49,6 @@ int iMoodDisgustedId = 14
 ; is this character class processing emotions?
 bool loopIsActive = false
 
-; who we talking about
-actor akActor 
-
 float decayRate = 0.3
 
 ; expression override claims to suppress other facial animations, so lets keep it capped at 50%

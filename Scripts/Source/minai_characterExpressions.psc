@@ -1,4 +1,4 @@
-scriptname minai_characterExpressionAnimationClass extends Quest
+scriptname minai_CharacterExpression extends Quest
 
 ; https://ck.uesp.net/wiki/SetExpressionOverride_-_Actor
 ; 0: Dialogue Anger

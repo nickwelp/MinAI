@@ -18,6 +18,8 @@ GlobalVariable _Frost_ExposureTarget
 FormList _Frost_OvercastWeatherList
 FormList _Frost_SevereWeatherList
 
+bool bIsNight = false
+
 ; tracked actors - most attributes don't change so once found we'll save that here
 ; so that we know the db is aready updated 
 string[] Property ActorList Auto 
@@ -75,6 +77,14 @@ string function GetDayState()
   elseif(Time==47) 
     str = "almost midnight"
   endif
+  ; set IsNight here
+  if(Time<11)
+    bIsNight = true
+  elseif(Time>=38)
+    bIsNight = true
+  else 
+    bIsNight = false
+  endif  
   return str
 EndFunction
 
@@ -144,7 +154,8 @@ function SetContext(actor akActor)
       envDescription += "It is raining outside. "
     endif
     ; Snow is 3, Rain is 2, Cloudy is 1, Clear is 0, and -1 is used 
-    
+    envDescription += GetMoonStatus()
+
     if(akActor.IsInInterior())
       envDescription = "We are indoors. "
     endif
@@ -189,7 +200,7 @@ function SetContext(actor akActor)
 
   ; if name not in list yet lets do some sets of stuff, like family
   ; except for the oddity that is certain family rearing mods where children can grow
-  int r = Utility.RandomInt(0,20)
+  int r =  PO3_SKSEFunctions.GenerateRandomInt(0,20)
   bool notInList = ActorList.Find(an) < 0
 
   ; the player's data can change pretty often, and so can a follower's
@@ -660,4 +671,79 @@ function SetContext(actor akActor)
     dynamicData =  " " + an + " is " + dynamicData 
   endif
   aiff.SetActorVariable(akActor, "EnvironmentalAwarenessDynamicData", dynamicData)
+EndFunction
+
+string function GetMoonStatus()
+  int phase = GetCurrentMoonPhase()
+  string txt = "The " + GetCurrentMoonSync()
+  if(bIsNight)
+    txt += " are"
+  else
+    txt += " will be"
+  endif
+  if(phase == 0) 
+    txt += " full"
+  elseif(phase == 1)
+    txt += " wanning gibbious"
+  elseif(phase == 2)
+    txt += " third quarter"
+  elseif(phase == 3)
+    txt += " wanning crescent"
+  elseif(phase == 4)
+    txt += " in new moon"
+  elseif(phase == 5)
+    txt += " waxing crescent"
+  elseif(phase == 6)
+    txt += " first quarter"
+  elseif(phase == 7)
+    txt += " waxing gibbious"
+  endif
+  txt += " tonight."
+  return txt
+endfunction
+
+int Function GetCurrentMoonPhase()
+	Int GameDaysPassed
+	Int GameHoursPassed
+	Int PhaseTest
+	GameDaysPassed = GetPassedGameDays()
+	GameHoursPassed = GetPassedGameHours()
+	If (GameHoursPassed >= 12.0)
+		GameDaysPassed += 1
+	EndIf
+	PhaseTest = GameDaysPassed % 24 ;A full cycle through the moon phases lasts 24 days
+	If PhaseTest >= 22 || PhaseTest == 0
+		Return 7
+	ElseIf PhaseTest < 4
+		Return 0
+	ElseIf PhaseTest < 7
+		Return 1
+	ElseIf PhaseTest < 10
+		Return 2
+	ElseIF PhaseTest < 13
+		Return 3
+	ElseIf PhaseTest < 16
+		Return 4
+	ElseIf PhaseTest < 19
+		Return 5
+	ElseIf PhaseTest < 22
+		Return 6
+	EndIf
+EndFunction
+
+string Function GetCurrentMoonSync() Global
+	Int GameDaysPassed
+	Int GameHoursPassed
+	Int SyncTest
+	
+	GameDaysPassed = GetPassedGameDays()
+	GameHoursPassed = GetPassedGameHours()
+	If (GameHoursPassed >= 12)
+		GameDaysPassed += 1
+	EndIf
+	SyncTest = GameDaysPassed % 5
+	if(SyncTest == 0)
+    return " two moons"
+  endif
+  return " one moon"
 EndFunction

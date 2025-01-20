@@ -12,13 +12,25 @@ minai_AIFF aiff
 minai_MainQuestController main
 minai_Arousal arousal
 DefeatConfig Defeat
-actor player
+minai_ActionsLibrary actionsLibary
+
+
+; actor player
+Actor Property PlayerRef Auto ;
 string playerName
 bool bHasDefeat
 bool bHasSimpleSlavery
 
+Spell Property minai_SpellNPCDisrobes Auto
+Spell Property minai_SpellNPCLosesClothes Auto
+
+MagicEffect Property minai_MagicEffectNPCDisrobes Auto	
+MagicEffect Property minai_MagicEffectNPCLosesClothes Auto
+
 ; actions have consequences... and the game doesn't save changes to NPC's AI Attributes between saves
 ; so we need to record new values and update them accordingly
+; the granularity on these is not much, so when AI actions are driving changes in value the actions ought to have been dramatic 
+Formlist MinaiUndressedNPCs
 
 actor[] ActorList
 int[] MoralityList
@@ -26,16 +38,6 @@ int[] AggressionList
 int[] ConfidenceList
 int[] AssistanceList
 bool[] updatedSinceLastSaveLoad
-
-
-; class for managing npc emotional expressions
-minai_characterExpressions emotionalFacialExpressions
-
-
-Bool Function HaveSimpleSlavery()
-    Int ssIndex = 
-    Return 255 != ssIndex
-EndFunction
 
 function addActor(actor akActor)
     actor[] newlist = new actor[ActorList.Length + 1]
@@ -68,27 +70,14 @@ function addActor(actor akActor)
     AssistanceList = newAssistanceList       
 endFunction
 
-int[] function extendIntArray(int val, int[] intArray)
-    int[] newArray = new int[intArray.Length + 1]
-    int i = 0
-    while i < intArray.Length
-        newArray[i] = intArray[i]
-        i += 1
-    endWhile
-    newArray[newArray.Length - 1] = val
-    return newArray
-endFunction
-
-
 function Maintenance(minai_MainQuestController _main)
     main = _main
     aiff = (Self as Quest) as minai_AIFF
     MinaiUtil = (Self as Quest) as minai_Util
     MinaiUtil.Info("MinAI Actions are loading")
     arousal = (Self as Quest) as minai_Arousal
-    emotionalFacialExpressions = (Self as Quest) as minai_characterExpressions
-    player = Game.GetPlayer()
-    playerName = main.GetActorName(player)
+    playerName = main.GetActorName(playerRef)
+    actionsLibary = (Self as Quest) as minai_ActionsLibrary
     bHasDefeat = (Game.GetModByName("SexlabDefeat.esp") != 255)
     if bHasDefeat
         Defeat = DefeatUtil.GetDefeat()
@@ -117,8 +106,7 @@ function SetContext(actor akActor)
     bool bIsIntimidated = akActor.IsIntimidatedbyPlayer()
     bool bWouldBeIntimidated = akActor.GetIntimidateSuccess()
 
-    bool isPlayerHumbled = false playerRef.   
-
+    bool isPlayerHumbled = false
     bool isDefeated = false
    
     if bHasDefeat 
@@ -128,11 +116,10 @@ function SetContext(actor akActor)
     ; what action would this character take next?
     if(bIsIntimidated && !isPlayerHumbled)
         aiff.RegisterAction("ExtCmdGrovel", "Grovel", "Grovel before " + playerName, actorName, 1, 30, 2, 5, 300, True)
-        aiff.RegisterAction("ExtCmdAllowArrest", "AllowRestraints",  "Allow self to be restrained", actorName, 1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdDisrobe", "Disrobe", "Take off all your clothes", actorName, 1, 30, 2, 5, 300, True)
-        aiff.RegisterAction("ExtCmdLookPitiful", "BeMeek", "Look meek and pitiful, start begging to assuage the player" , actorName,  1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdGetDressed", "GetDressed", "Put your clothes on" , actorName,  1, 30, 2, 5, 300, True)
         aiff.RegisterAction("ExtCmdFreezeInTerror", "FreezeInTerror", "Freeze in terror", actorName,  1, 30, 2, 5, 300, True)
+        aiff.RegisterAction("ExtCmdConcedeInventory", "ConcedeInventory", "Give up all your material goods", actorName,  1, 30, 2, 5, 300, True)
     endIf
 
     if(bWouldBeIntimidated && !bIsIntimidated)
@@ -143,38 +130,17 @@ function SetContext(actor akActor)
         aiff.RegisterAction("ExtCmdCeaseCower", "CeaseCower", "Cease cowering before " + playerName + "." , actorName, 1, 30, 2, 5, 300, True)
     endif
 
-    ; disrobe cause horny
     ; is a percent score, 1-100
     int arousalScore = arousal.GetActorArousal(akActor)
     if(arousalScore >= 70)
         ; undress doesn't throw clothes on floor
-        aiff.RegisterAction("ExtCmdDisrobe", "Undress", "Take off all your clothes", actorName, 1, 30, 2, 5, 300, True)
+        aiff.RegisterAction("ExtCmdUndress", "Undress", "Take off all your clothes", actorName, 1, 30, 2, 5, 300, True)
     endif
 endfunction
 
 
 
 
-; lower morality
-; by game mechanics this only impacts followers 
-; but by describing this to the LLMs it can be made informative
-function degenerate(actor akActor)
-    int index = ActorList.find(akActor)
-    if(index>-1)
-        MoralityList[index] = MoralityList[index] - 1
-        if(MoralityList[index]<0) 
-            MoralityList[index] = 0
-        Endif
-        akActor.SetActorValue("Morality") = MoralityList[index]
-    else 
-        addActor(akActor)
-        MoralityList[MoralityList.Length - 1] = MoralityList[MoralityList.Length] - 1
-        if(MoralityList[MoralityList.Length - 1]<0) 
-            MoralityList[MoralityList.Length - 1] = 0
-        Endif
-        akActor.SetActorValue("Morality") = MoralityList[MoralityList.Length - 1]
-    endif
-endFunction
 
 
 
@@ -258,96 +224,30 @@ Event CommandDispatcher(String speakerName,String  command, String parameter)
     if !bHasAIFF
         return
     EndIf
+    actor akActor = AIAgentFunctions.getAgentByName(speakerName)
     Main.Debug("Actions - CommandDispatcher(" + speakerName +", " + command +", " + parameter + ")")
     ; for cowering
     if (command == "ExtCmdCower")
-        Cower(speakerName)
+        actionsLibary.Cower(akActor)
         Main.RegisterEvent(speakerName + " is cowering before " + playerName)
     elseif (command == "ExtCmdCeaseCower")
-        CeaseCower(speakerName)
+        actionsLibary.CeaseCower(akActor)
         Main.RegisterEvent(speakerName + " has stopped cowering before " + playerName)
     elseif (command == "ExtCmdGrovel")
         Main.RegisterEvent(speakerName + " begins groveling before " + playerName)
-    elseif (command == "ExtCmdDisrobe")
-        Disrobe(speakerName)    
+    elseif (command == "ExtCmdDisrobe") ; retains clothes
+        actionsLibary.Disrobe(akActor)    
         Main.RegisterEvent(speakerName + " begins to disrobe.")
+    elseif (command == "ExtCmdDisrobeItimidated")
+        actionsLibary.LoseClothes(akActor)
+        Main.RegisterEvent(speakerName + " in a panic throws off their possessions.")
+    elseif (command == "ExtCmdConcedeInventory") ; retains clothes
+        actionsLibary.ConcedeInventory(akActor)    
+        Main.RegisterEvent(speakerName + " concedes all their possessions.")
     elseif (command == "ExtCmdGetDressed") 
         Main.RegisterAction(speakerName + " begins to get dressed.")
-    elseif (command == "ExtCmdLookPitiful")
-        Main.RegisterAction(speakerName + " looks absolutely pitiful.")
     elseif (command == "ExtCmdFreezeInTerror")
+        actionsLibary.Restrain()
         Main.RegisterAction(speakerName + " freezes in terror.")
     EndIf
 EndEvent
-
-function Cower(string speakerName)
-    Actor akActor = AIAgentFunctions.getAgentByName(speakerName)
-    akActor.SetIntimidated(true)
-    emotionalFacialExpressions.feelFear(akActor)
-    emotionalFacialExpressions.feelSad(akActor)
-endfunction
-
-function CeaseCower(string speakerName)
-    Actor akActor = AIAgentFunctions.getAgentByName(speakerName)
-    akActor.SetIntimidated(true)
-    emotionalFacialExpressions.feelAnger(akActor)
-    emotionalFacialExpressions.feelDisgusted(akActor)
-endfunction
-
-function Disrobe(string speakerName)
-    ; they only get as naked as your mods allow, ergo sfw
-    Actor akActor = AIAgentFunctions.getAgentByName(speakerName)
-    Armor helmetArmor = akActor.GetEquippedArmorInSlot(30)
-    Armor torsoArmor = akActor.GetEquippedArmorInSlot(32)
-    Armor shoesArmor = akActor.GetEquippedArmorInSlot(37)
-    Armor shieldArmor = akActor.GetEquippedArmorInSlot(39)
-    Armor handsArmor = akActor.GetEquippedArmorInSlot(33)
-    Armor forearmsArmor = akActor.GetEquippedArmorInSlot(34)
-    Armor ringArmor = akActor.GetEquippedArmorInSlot(36)
-    Armor calvesArmor = akActor.GetEquippedArmorInSlot(38)  
-    Armor earsArmor = akActor.GetEquippedArmorInSlot(43)
-    Armor circletArmor = akActor.GetEquippedArmorInSlot(42)
-    akActor.UnequipAll()
-
-    ; gear goes to floor in front of player
-    if(helmetArmor)
-        akActor.RemoveItem(helmetArmor,1)
-        playerRef.PlaceAtMe(helmetArmor)
-    endif
-    if(torsoArmor)
-        akActor.RemoveItem(torsoArmor,1)
-        playerRef.PlaceAtMe(torsoArmor)
-    endif
-    if(shoesArmor)
-        akActor.RemoveItem(shoesArmor,1)
-        playerRef.PlaceAtMe(shoesArmor)
-    endif
-    if(shieldArmor)
-        akActor.RemoveItem(shieldArmor,1)
-        playerRef.PlaceAtMe(shieldArmor)
-    endif
-    if(handsArmor)
-        akActor.RemoveItem(handsArmor,1)
-        playerRef.PlaceAtMe(handsArmor)
-    endif
-    if(forearmsArmor)
-        akActor.RemoveItem(forearmsArmor,1)
-        playerRef.PlaceAtMe(forearmsArmor)
-    endif
-    if(ringArmor)
-        akActor.RemoveItem(ringArmor,1)
-        playerRef.PlaceAtMe(ringArmor)
-    endif
-    if(calvesArmor)
-        akActor.RemoveItem(calvesArmor,1)
-        playerRef.PlaceAtMe(calvesArmor)
-    endif
-    if(earsArmor)
-        akActor.RemoveItem(earsArmor,1)
-        playerRef.PlaceAtMe(earsArmor)
-    endif
-    if(circletArmor)
-        akActor.RemoveItem(circletArmor,1)
-        playerRef.PlaceAtMe(circletArmor)
-    endif
-endFunction
